@@ -13,6 +13,7 @@ char board[BOARD_SIZE][BOARD_SIZE];
 
 int score = 0;
 Vector2 grid_origin;
+Vector2 selected_tile = { -1, -1};
 
 char random_title() {
 	return tile_chars[rand() % TILE_TYPES];
@@ -43,8 +44,20 @@ int main(void)
     srand(time(NULL));
 	init_board();
 
+    Vector2 mouse = { 0, 0 };
+
     while (!WindowShouldClose()) 
     {
+        mouse = GetMousePosition();
+        if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+            int x = (mouse.x - grid_origin.x) / TILE_SIZE;
+            int y = (mouse.y - grid_origin.y) / TILE_SIZE;
+
+            if (x >= 0 && x < BOARD_SIZE && y >= 0 && y < BOARD_SIZE) {
+                selected_tile = { static_cast<float>(x), static_cast<float>(y) };
+            }
+        }
+
         BeginDrawing();
         ClearBackground(BLACK);
 
@@ -68,6 +81,16 @@ int main(void)
                 );
             }
 		}
+
+        if (selected_tile.x >= 0) {
+            Rectangle selectedRect = {
+                grid_origin.x + (selected_tile.x * TILE_SIZE),
+                grid_origin.y + (selected_tile.y * TILE_SIZE),
+                TILE_SIZE,
+                TILE_SIZE
+            };
+            DrawRectangleLinesEx(selectedRect, 2, YELLOW);
+        }
         DrawText(TextFormat("Score: %d", score), 20, 20, 24, YELLOW);
         EndDrawing();
     }
