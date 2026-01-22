@@ -9,9 +9,9 @@
 #define TILE_TYPES 5
 
 const char tile_chars[TILE_TYPES] = { '#', '@', '$', '%', '&' };    
-
 char board[BOARD_SIZE][BOARD_SIZE];
 
+int score = 0;
 Vector2 grid_origin;
 
 char random_title() {
@@ -41,7 +41,6 @@ int main(void)
     SetTargetFPS(60);  
 
     srand(time(NULL));
-
 	init_board();
 
     while (!WindowShouldClose()) 
@@ -69,7 +68,7 @@ int main(void)
                 );
             }
 		}
-
+        DrawText(TextFormat("Score: %d", score), 20, 20, 24, YELLOW);
         EndDrawing();
     }
 
