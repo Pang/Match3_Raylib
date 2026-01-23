@@ -97,12 +97,11 @@ int main(void) {
             int y = (mouse.y - board.grid_origin.y) / TILE_SIZE;
 
             if (x >= 0 && x < BOARD_SIZE && y >= 0 && y < BOARD_SIZE) {
-				Vector2 current_tile = { static_cast<float>(x), static_cast<float>(y) };
                 if (board.selected_tile.x < 0) {
                     board.selected_tile = { x, y };
                 } else {
-                    if (are_tiles_adjacent(board.selected_tile.x, board.selected_tile.y, current_tile.x, current_tile.y)) {
-                        swap_tiles(board, board.selected_tile.x, board.selected_tile.y, current_tile.x, current_tile.y);
+                    if (are_tiles_adjacent(board.selected_tile.x, board.selected_tile.y, x, y)) {
+                        swap_tiles(board, board.selected_tile.x, board.selected_tile.y, x, y);
                         
                         FoundMatchesResponse found_matches_response = find_matches(board, score);
                         score = found_matches_response.updatedScore;
@@ -114,7 +113,7 @@ int main(void) {
                             }
                             resolve_matches();
                         } else {
-                            swap_tiles(board, board.selected_tile.x, board.selected_tile.y, current_tile.x, current_tile.y);
+                            swap_tiles(board, board.selected_tile.x, board.selected_tile.y, x, y);
                         }
                     }
                     board.selected_tile = { -1, -1 };
