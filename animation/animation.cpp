@@ -1,6 +1,5 @@
 #pragma once
 #include "animation.h"
-#include "../board/board.h"
 
 
 void init_animation(Animation& animation) {

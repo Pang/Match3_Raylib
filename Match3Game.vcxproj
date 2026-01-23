@@ -135,11 +135,13 @@
     <ClCompile Include="game\game.cpp" />
     <ClCompile Include="game\game.h" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="render\render.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="animation\animation.h" />
     <ClInclude Include="board\board.h" />
     <ClInclude Include="board\config.h" />
+    <ClInclude Include="render\render.h" />
     <ClInclude Include="types\types.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
