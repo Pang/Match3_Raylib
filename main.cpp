@@ -17,9 +17,29 @@ int score = 0;
 Vector2 grid_origin;
 Vector2 selected_tile = { -1, -1};
 float fall_speed = 5.0f;
+float match_delay_timer = 0.0f;
+const float MATCH_DELAY_DURATION = 0.2f;
+
+typedef enum {
+    STATE_IDLE,
+    STATE_ANIMATING,
+    STATE_MATCH_DELAY
+} TileState;
+
+TileState tile_state = STATE_IDLE;
 
 char random_tile() {
 	return tile_chars[rand() % TILE_TYPES];
+}
+
+void swap_tiles(int x1, int y1, int x2, int y2) {
+    char temp = board[y1][x1];
+    board[y1][x1] = board[y2][x2];
+    board[y2][x2] = temp;
+}
+
+bool are_tiles_adjacent(Vector2 a, Vector2 b) {
+    return (abs((int)a.x - (int)b.x) + abs((int)a.y - (int)b.y)) == 1;
 }
 
 bool find_matches() {
@@ -79,6 +99,8 @@ void resolve_matches() {
             write_y--;
         }
     }
+
+    tile_state = STATE_ANIMATING;
 }
 
 void init_board() {
@@ -91,7 +113,17 @@ void init_board() {
 	int grid_width = BOARD_SIZE * TILE_SIZE;
 	int grid_height = BOARD_SIZE * TILE_SIZE;
 
-	grid_origin = Vector2 { (GetScreenWidth() - grid_width) / 2.0f, (GetScreenHeight() - grid_height) / 2.0f };
+	grid_origin = Vector2 {
+        (GetScreenWidth() - grid_width) / 2.0f,
+        (GetScreenHeight() - grid_height) / 2.0f
+    };
+
+	if (find_matches()) {
+        resolve_matches();
+    }
+    else {
+		tile_state = STATE_IDLE;
+    }
 }
 
 int main(void)
@@ -110,22 +142,60 @@ int main(void)
     while (!WindowShouldClose()) 
     {
         mouse = GetMousePosition();
-        if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+        if (tile_state == STATE_IDLE && IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
             int x = (mouse.x - grid_origin.x) / TILE_SIZE;
             int y = (mouse.y - grid_origin.y) / TILE_SIZE;
 
             if (x >= 0 && x < BOARD_SIZE && y >= 0 && y < BOARD_SIZE) {
-                selected_tile = { static_cast<float>(x), static_cast<float>(y) };
+				Vector2 current_tile = { static_cast<float>(x), static_cast<float>(y) };
+                if (selected_tile.x < 0) {
+                    selected_tile = current_tile;
+                } else {
+                    if (are_tiles_adjacent(selected_tile, current_tile)) {
+                        swap_tiles((int)selected_tile.x, (int)selected_tile.y, x, y);
+                        if (!find_matches()) {
+                            // swap back if no match
+                            swap_tiles((int)selected_tile.x, (int)selected_tile.y, x, y);
+                        } else {
+                            resolve_matches();
+                        }
+                    }
+                    selected_tile = { -1, -1 };
+                }
             }
         }
 
-		for (int y = 0; y < BOARD_SIZE; y++) {
-            for (int x = 0; x < BOARD_SIZE; x++) {
-                if (fall_offset[y][x] > 0) {
-                    fall_offset[y][x] -= fall_speed;
-                    if (fall_offset[y][x] < 0) {
-                        fall_offset[y][x] = 0;
+        if (tile_state == STATE_ANIMATING) {
+            bool still_animating = false;
+
+            for (int y = 0; y < BOARD_SIZE; y++) {
+                for (int x = 0; x < BOARD_SIZE; x++) {
+                    if (fall_offset[y][x] > 0) {
+                        fall_offset[y][x] -= fall_speed;
+                        if (fall_offset[y][x] < 0) {
+                            fall_offset[y][x] = 0;
+                        }
+                        else {
+                            still_animating = true;
+                        }
                     }
+                }
+            }
+
+			if (!still_animating) {
+                tile_state = STATE_MATCH_DELAY;
+				match_delay_timer = MATCH_DELAY_DURATION;
+            }
+        }
+
+        if (tile_state == STATE_MATCH_DELAY) {
+            match_delay_timer -= GetFrameTime();
+            if (match_delay_timer <= 0.0f) {
+                if (find_matches()) {
+                    resolve_matches();
+                }
+                else {
+                    tile_state = STATE_IDLE;
                 }
             }
         }
@@ -137,6 +207,13 @@ int main(void)
         BeginDrawing();
         ClearBackground(BLACK);
 
+        DrawRectangle(
+            grid_origin.x,
+            grid_origin.y,
+            BOARD_SIZE * TILE_SIZE,
+            BOARD_SIZE * TILE_SIZE,
+            Fade(DARKGRAY, 0.60f)
+        );
         for (int y = 0; y < BOARD_SIZE; y++) {
             for (int x = 0; x < BOARD_SIZE; x++) {
 				Rectangle rect = { 
