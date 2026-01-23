@@ -10,19 +10,81 @@
 
 const char tile_chars[TILE_TYPES] = { '#', '@', '$', '%', '&' };    
 char board[BOARD_SIZE][BOARD_SIZE];
+bool matched[BOARD_SIZE][BOARD_SIZE] = { 0 };
+float fall_offset[BOARD_SIZE][BOARD_SIZE] = { 0 };
 
 int score = 0;
 Vector2 grid_origin;
 Vector2 selected_tile = { -1, -1};
+float fall_speed = 5.0f;
 
-char random_title() {
+char random_tile() {
 	return tile_chars[rand() % TILE_TYPES];
+}
+
+bool find_matches() {
+    bool found = false;
+    for (int y = 0; y < BOARD_SIZE; y++) {
+        for (int x = 0; x < BOARD_SIZE; x++) {
+            matched[y][x] = false;
+        }
+    }
+
+    for (int y = 0; y < BOARD_SIZE; y++) {
+        for (int x = 0; x < BOARD_SIZE - 2; x++) {
+            char t = board[y][x];
+            if (t == board[y][x + 1] &&
+                t == board[y][x + 2]) {
+                matched[y][x] = matched[y][x + 1] = matched[y][x + 2] = true;
+                // update score
+                score += 10;
+                found = true;
+            }
+        }
+    }
+
+    for (int x = 0; x < BOARD_SIZE; x++) {
+        for (int y = 0; y < BOARD_SIZE - 2; y++) {
+            char t = board[y][x];
+            if (t == board[y + 1][x] &&
+                t == board[y + 2][x]) {
+                matched[y][x] = matched[y + 1][x] = matched[y + 2][x] = true;
+                score += 10;
+                found = true;
+            }
+        }
+    }
+
+    return found;
+}
+
+void resolve_matches() {
+    for (int x = 0; x < BOARD_SIZE; x++) {
+        int write_y = BOARD_SIZE - 1;
+        for (int y = BOARD_SIZE - 1; y >= 0; y--) {
+            if (!matched[y][x]) {
+                if (y != write_y) {
+                    board[write_y][x] = board[y][x];
+                    fall_offset[write_y][x] = (write_y - y) * TILE_SIZE;
+                    board[y][x] = ' ';
+                }
+                write_y--;
+            }
+        }
+
+        // fill empty spots with new random tiles
+        while (write_y >= 0) {
+            board[write_y][x] = random_tile();
+            fall_offset[write_y][x] = (write_y + 1) * TILE_SIZE;
+            write_y--;
+        }
+    }
 }
 
 void init_board() {
     for (int y = 0; y < BOARD_SIZE; y++) {
         for (int x = 0; x < BOARD_SIZE; x++) {
-            board[y][x] = random_title();
+            board[y][x] = random_tile();
         }
     }
 
@@ -31,7 +93,6 @@ void init_board() {
 
 	grid_origin = Vector2 { (GetScreenWidth() - grid_width) / 2.0f, (GetScreenHeight() - grid_height) / 2.0f };
 }
-
 
 int main(void)
 {
@@ -58,6 +119,21 @@ int main(void)
             }
         }
 
+		for (int y = 0; y < BOARD_SIZE; y++) {
+            for (int x = 0; x < BOARD_SIZE; x++) {
+                if (fall_offset[y][x] > 0) {
+                    fall_offset[y][x] -= fall_speed;
+                    if (fall_offset[y][x] < 0) {
+                        fall_offset[y][x] = 0;
+                    }
+                }
+            }
+        }
+
+        if (find_matches()) {
+			resolve_matches();
+        }
+
         BeginDrawing();
         ClearBackground(BLACK);
 
@@ -72,13 +148,16 @@ int main(void)
 
 				DrawRectangleLinesEx(rect, 1, DARKGRAY);
 
-				Vector2 position = { rect.x + 12, rect.y + 8 };
-                DrawTextEx(
-                    GetFontDefault(),
-                    TextFormat("%c", board[y][x]),
-                    position,
-                    20, 1, WHITE
-                );
+                if (board[y][x] != ' ') {
+                    Vector2 position = { rect.x + 12, rect.y + 8 - fall_offset[y][x]};
+                    DrawTextEx(
+                        GetFontDefault(),
+                        TextFormat("%c", board[y][x]),
+                        position,
+                        20, 1,
+                        matched[y][x] ? GREEN : YELLOW
+                    );
+                }
             }
 		}
 
