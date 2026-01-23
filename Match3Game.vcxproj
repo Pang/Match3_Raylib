@@ -130,12 +130,17 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="animation\animation.cpp" />
     <ClCompile Include="board\board.cpp" />
+    <ClCompile Include="game\game.cpp" />
+    <ClCompile Include="game\game.h" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="animation\animation.h" />
     <ClInclude Include="board\board.h" />
     <ClInclude Include="board\config.h" />
+    <ClInclude Include="types\types.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

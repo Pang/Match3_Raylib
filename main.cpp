@@ -6,105 +6,18 @@
 #include <time.h>
 #include <math.h>
 
+#include "types/types.h"
 #include "board/config.h"
 #include "board/board.h"
+#include "animation/animation.h"
 
 Board board{};
+Animation animation{};
 
 int score = 0;
-Vector2 grid_origin;
-Vector2 selected_tile = { -1, -1};
-
-float fall_speed = 5.0f;
-float match_delay_timer = 0.0f;
-const float MATCH_DELAY_DURATION = 0.5f;
-
-float score_scale = 1.0f;
-float score_scale_velocity = 0.0f;
-bool score_animating = false;
-
-typedef enum {
-    STATE_IDLE,
-    STATE_ANIMATING,
-    STATE_MATCH_DELAY
-} TileState;
 
 TileState tile_state = STATE_IDLE;
 
-typedef struct {
-    Vector2 position;
-    int amount;
-    float lifetime;
-    float alpha;
-    bool active;
-} ScorePopup;
-
-ScorePopup score_popups[MAX_SCORE_POPUPS] = { 0 };
-
-void add_score_popup(int x, int y, int amount, Vector2 grid_origin) {
-    for (int i = 0; i < MAX_SCORE_POPUPS; i++) {
-        if (!score_popups[i].active) {
-            Vector2 popupPos = {
-                grid_origin.x + x * TILE_SIZE + TILE_SIZE / 2,
-                grid_origin.y + y * TILE_SIZE + TILE_SIZE / 2
-			};
-            score_popups[i].position = popupPos;
-            score_popups[i].amount = amount;
-            score_popups[i].lifetime = 1.0f;
-            score_popups[i].alpha = 1.0f;
-            score_popups[i].active = true;
-            break;
-        }
-    }
-}
-
-bool find_matches() {
-    bool found = false;
-    for (int y = 0; y < BOARD_SIZE; y++) {
-        for (int x = 0; x < BOARD_SIZE; x++) {
-            board.matched[y][x] = false;
-        }
-    }
-
-    for (int y = 0; y < BOARD_SIZE; y++) {
-        for (int x = 0; x < BOARD_SIZE - 2; x++) {
-            char t = board.tiles[y][x];
-            if (t == board.tiles[y][x + 1] &&
-                t == board.tiles[y][x + 2]) {
-                board.matched[y][x] = board.matched[y][x + 1] = board.matched[y][x + 2] = true;
-                // update score
-                score += 10;
-                found = true;
-
-                score_animating = true;
-                score_scale = 2.0f;
-                score_scale_velocity = -2.5f;
-
-                add_score_popup(x, y, 10, grid_origin);
-            }
-        }
-    }
-
-    for (int x = 0; x < BOARD_SIZE; x++) {
-        for (int y = 0; y < BOARD_SIZE - 2; y++) {
-            char t = board.tiles[y][x];
-            if (t == board.tiles[y + 1][x] &&
-                t == board.tiles[y + 2][x]) {
-                board.matched[y][x] = board.matched[y + 1][x] = board.matched[y + 2][x] = true;
-                score += 10;
-                found = true;
-
-                score_animating = true;
-                score_scale = 2.0f;
-                score_scale_velocity = -2.5f;
-
-                add_score_popup(x, y, 10, grid_origin);
-            }
-        }
-    }
-
-    return found;
-}
 
 void resolve_matches() {
     for (int x = 0; x < BOARD_SIZE; x++) {
@@ -131,15 +44,43 @@ void resolve_matches() {
     tile_state = STATE_ANIMATING;
 }
 
+void add_score_popup(Animation& animation, int x, int y, int amount, Vec2Int grid_origin) {
+    animation.score_animating = true;
+    animation.score_scale = 2.0f;
+    animation.score_scale_velocity = -2.5f;
+
+    for (int i = 0; i < MAX_SCORE_POPUPS; i++) {
+        if (!animation.score_popups[i].active) {
+            Vec2Int popupPos = {
+                grid_origin.x + x * TILE_SIZE + TILE_SIZE / 2,
+                grid_origin.y + y * TILE_SIZE + TILE_SIZE / 2
+            };
+            animation.score_popups[i].position = popupPos;
+            animation.score_popups[i].amount = amount;
+            animation.score_popups[i].lifetime = 1.0f;
+            animation.score_popups[i].alpha = 1.0f;
+            animation.score_popups[i].active = true;
+            break;
+        }
+    }
+}
+
 int main(void) {
     InitWindow(screenWidth, screenHeight, "Match 3 Game");
     SetTargetFPS(60);  
     srand(time(NULL));
 
-    std::vector<float> boardVector = init_board(board);
-	grid_origin = Vector2{ boardVector[0], boardVector[1] };
+    init_board(board);
+    init_animation(animation);
 
-    if (find_matches()) {
+	FoundMatchesResponse found_matches_response = find_matches(board, score);
+	score = found_matches_response.updatedScore;
+
+    if (found_matches_response.foundMatches) {
+		for (int i = 0; i < found_matches_response.matchPositions.size(); i++) {
+            Vec2Int pos = found_matches_response.matchPositions[i];
+            add_score_popup(animation, pos.x, pos.y, 10, board.grid_origin);
+        }
         resolve_matches();
     }
     else {
@@ -152,24 +93,31 @@ int main(void) {
     {
         mouse = GetMousePosition();
         if (tile_state == STATE_IDLE && IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
-            int x = (mouse.x - grid_origin.x) / TILE_SIZE;
-            int y = (mouse.y - grid_origin.y) / TILE_SIZE;
+            int x = (mouse.x - board.grid_origin.x) / TILE_SIZE;
+            int y = (mouse.y - board.grid_origin.y) / TILE_SIZE;
 
             if (x >= 0 && x < BOARD_SIZE && y >= 0 && y < BOARD_SIZE) {
 				Vector2 current_tile = { static_cast<float>(x), static_cast<float>(y) };
-                if (selected_tile.x < 0) {
-                    selected_tile = current_tile;
+                if (board.selected_tile.x < 0) {
+                    board.selected_tile = { x, y };
                 } else {
-                    if (are_tiles_adjacent(selected_tile.x, selected_tile.y, current_tile.x, current_tile.y)) {
-                        swap_tiles(board, (int)selected_tile.x, (int)selected_tile.y, current_tile.x, current_tile.y);
-                        if (!find_matches()) {
-                            // swap back if no match
-                            swap_tiles(board, (int)selected_tile.x, (int)selected_tile.y, current_tile.x, current_tile.y);
-                        } else {
+                    if (are_tiles_adjacent(board.selected_tile.x, board.selected_tile.y, current_tile.x, current_tile.y)) {
+                        swap_tiles(board, board.selected_tile.x, board.selected_tile.y, current_tile.x, current_tile.y);
+                        
+                        FoundMatchesResponse found_matches_response = find_matches(board, score);
+                        score = found_matches_response.updatedScore;
+
+                        if (found_matches_response.foundMatches) {
+                            for (int i = 0; i < found_matches_response.matchPositions.size(); i++) {
+                                Vec2Int pos = found_matches_response.matchPositions[i];
+                                add_score_popup(animation, pos.x, pos.y, 10, board.grid_origin);
+                            }
                             resolve_matches();
+                        } else {
+                            swap_tiles(board, board.selected_tile.x, board.selected_tile.y, current_tile.x, current_tile.y);
                         }
                     }
-                    selected_tile = { -1, -1 };
+                    board.selected_tile = { -1, -1 };
                 }
             }
         }
@@ -180,7 +128,7 @@ int main(void) {
             for (int y = 0; y < BOARD_SIZE; y++) {
                 for (int x = 0; x < BOARD_SIZE; x++) {
                     if (board.fall_offset[y][x] > 0) {
-                        board.fall_offset[y][x] -= fall_speed;
+                        board.fall_offset[y][x] -= animation.fall_speed;
                         if (board.fall_offset[y][x] < 0) {
                             board.fall_offset[y][x] = 0;
                         }
@@ -193,14 +141,21 @@ int main(void) {
 
             if (!still_animating) {
                 tile_state = STATE_MATCH_DELAY;
-                match_delay_timer = MATCH_DELAY_DURATION;
+                animation.match_delay_timer = animation.match_delay_duration;
             }
         }
 
         if (tile_state == STATE_MATCH_DELAY) {
-            match_delay_timer -= GetFrameTime();
-            if (match_delay_timer <= 0.0f) {
-                if (find_matches()) {
+            animation.match_delay_timer -= GetFrameTime();
+            if (animation.match_delay_timer <= 0.0f) {
+                FoundMatchesResponse found_matches_response = find_matches(board, score);
+                score = found_matches_response.updatedScore;
+
+                if (found_matches_response.foundMatches) {
+                    for (int i = 0; i < found_matches_response.matchPositions.size(); i++) {
+                        Vec2Int pos = found_matches_response.matchPositions[i];
+                        add_score_popup(animation, pos.x, pos.y, 10, board.grid_origin);
+                    }
                     resolve_matches();
                 }
                 else {
@@ -211,23 +166,23 @@ int main(void) {
 
         // update our score popups array
         for (int i = 0; i < MAX_SCORE_POPUPS; i++) {
-            if (score_popups[i].active) {
-                score_popups[i].lifetime -= GetFrameTime();
-                score_popups[i].position.y -= 30 * GetFrameTime();
-                score_popups[i].alpha = score_popups[i].lifetime;
+            if (animation.score_popups[i].active) {
+                animation.score_popups[i].lifetime -= GetFrameTime();
+                animation.score_popups[i].position.y -= 30 * GetFrameTime();
+                animation.score_popups[i].alpha = animation.score_popups[i].lifetime;
 
-                if (score_popups[i].lifetime <= 0.0f) {
-                    score_popups[i].active = false;
+                if (animation.score_popups[i].lifetime <= 0.0f) {
+                    animation.score_popups[i].active = false;
                 }
             }
         }
 
         // update the score animation
-        if (score_animating) {
-            score_scale += score_scale_velocity * GetFrameTime();
-            if (score_scale <= 1.0f) {
-                score_scale = 1.0f;
-                score_animating = false;
+        if (animation.score_animating) {
+            animation.score_scale += animation.score_scale_velocity * GetFrameTime();
+            if (animation.score_scale <= 1.0f) {
+                animation.score_scale = 1.0f;
+                animation.score_animating = false;
             }
         }
 
@@ -235,8 +190,8 @@ int main(void) {
         ClearBackground(BLACK);
 
         DrawRectangle(
-            grid_origin.x,
-            grid_origin.y,
+            board.grid_origin.x,
+            board.grid_origin.y,
             BOARD_SIZE * TILE_SIZE,
             BOARD_SIZE * TILE_SIZE,
             Fade(DARKGRAY, 0.60f)
@@ -245,8 +200,8 @@ int main(void) {
         for (int y = 0; y < BOARD_SIZE; y++) {
             for (int x = 0; x < BOARD_SIZE; x++) {
 				Rectangle rect = { 
-                    grid_origin.x + (x * TILE_SIZE),
-                    grid_origin.y + (y * TILE_SIZE),
+                    board.grid_origin.x + (x * TILE_SIZE),
+                    board.grid_origin.y + (y * TILE_SIZE),
                     TILE_SIZE, 
                     TILE_SIZE 
                 };
@@ -266,10 +221,10 @@ int main(void) {
             }
 		}
 
-        if (selected_tile.x >= 0) {
+        if (board.selected_tile.x >= 0) {
             Rectangle selectedRect = {
-                grid_origin.x + (selected_tile.x * TILE_SIZE),
-                grid_origin.y + (selected_tile.y * TILE_SIZE),
+                board.grid_origin.x + (board.selected_tile.x * TILE_SIZE),
+                board.grid_origin.y + (board.selected_tile.y * TILE_SIZE),
                 TILE_SIZE,
                 TILE_SIZE
             };
@@ -279,12 +234,12 @@ int main(void) {
 
         // draw score popups
         for (int i = 0; i < MAX_SCORE_POPUPS; i++) {
-            if (score_popups[i].active) {
-                Color c = Fade(YELLOW, score_popups[i].alpha);
+            if (animation.score_popups[i].active) {
+                Color c = Fade(YELLOW, animation.score_popups[i].alpha);
                 DrawText(
-                    TextFormat("+%d", score_popups[i].amount),
-                    score_popups[i].position.x,
-                    score_popups[i].position.y,
+                    TextFormat("+%d", animation.score_popups[i].amount),
+                    animation.score_popups[i].position.x,
+                    animation.score_popups[i].position.y,
                     20, c);
             }
         }
