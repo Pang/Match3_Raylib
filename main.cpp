@@ -1,21 +1,15 @@
+#pragma once
+
 #include "raylib.h"
 #include <stdlib.h>
 #include <stdbool.h>
 #include <time.h>
 #include <math.h>
 
-#define BOARD_SIZE 8
-#define TILE_SIZE 40
-#define TILE_TYPES 5
-#define MAX_SCORE_POPUPS 32
+#include "board/config.h"
+#include "board/board.h"
 
-const int screenWidth = 800;
-const int screenHeight = 450;
-
-const char tile_chars[TILE_TYPES] = { '#', '@', '$', '%', '&' };    
-char board[BOARD_SIZE][BOARD_SIZE];
-bool matched[BOARD_SIZE][BOARD_SIZE] = { 0 };
-float fall_offset[BOARD_SIZE][BOARD_SIZE] = { 0 };
+Board board{};
 
 int score = 0;
 Vector2 grid_origin;
@@ -47,20 +41,6 @@ typedef struct {
 
 ScorePopup score_popups[MAX_SCORE_POPUPS] = { 0 };
 
-char random_tile() {
-	return tile_chars[rand() % TILE_TYPES];
-}
-
-void swap_tiles(int x1, int y1, int x2, int y2) {
-    char temp = board[y1][x1];
-    board[y1][x1] = board[y2][x2];
-    board[y2][x2] = temp;
-}
-
-bool are_tiles_adjacent(Vector2 a, Vector2 b) {
-    return (abs((int)a.x - (int)b.x) + abs((int)a.y - (int)b.y)) == 1;
-}
-
 void add_score_popup(int x, int y, int amount, Vector2 grid_origin) {
     for (int i = 0; i < MAX_SCORE_POPUPS; i++) {
         if (!score_popups[i].active) {
@@ -82,16 +62,16 @@ bool find_matches() {
     bool found = false;
     for (int y = 0; y < BOARD_SIZE; y++) {
         for (int x = 0; x < BOARD_SIZE; x++) {
-            matched[y][x] = false;
+            board.matched[y][x] = false;
         }
     }
 
     for (int y = 0; y < BOARD_SIZE; y++) {
         for (int x = 0; x < BOARD_SIZE - 2; x++) {
-            char t = board[y][x];
-            if (t == board[y][x + 1] &&
-                t == board[y][x + 2]) {
-                matched[y][x] = matched[y][x + 1] = matched[y][x + 2] = true;
+            char t = board.tiles[y][x];
+            if (t == board.tiles[y][x + 1] &&
+                t == board.tiles[y][x + 2]) {
+                board.matched[y][x] = board.matched[y][x + 1] = board.matched[y][x + 2] = true;
                 // update score
                 score += 10;
                 found = true;
@@ -107,10 +87,10 @@ bool find_matches() {
 
     for (int x = 0; x < BOARD_SIZE; x++) {
         for (int y = 0; y < BOARD_SIZE - 2; y++) {
-            char t = board[y][x];
-            if (t == board[y + 1][x] &&
-                t == board[y + 2][x]) {
-                matched[y][x] = matched[y + 1][x] = matched[y + 2][x] = true;
+            char t = board.tiles[y][x];
+            if (t == board.tiles[y + 1][x] &&
+                t == board.tiles[y + 2][x]) {
+                board.matched[y][x] = board.matched[y + 1][x] = board.matched[y + 2][x] = true;
                 score += 10;
                 found = true;
 
@@ -130,11 +110,11 @@ void resolve_matches() {
     for (int x = 0; x < BOARD_SIZE; x++) {
         int write_y = BOARD_SIZE - 1;
         for (int y = BOARD_SIZE - 1; y >= 0; y--) {
-            if (!matched[y][x]) {
+            if (!board.matched[y][x]) {
                 if (y != write_y) {
-                    board[write_y][x] = board[y][x];
-                    fall_offset[write_y][x] = (write_y - y) * TILE_SIZE;
-                    board[y][x] = ' ';
+                    board.tiles[write_y][x] = board.tiles[y][x];
+                    board.fall_offset[write_y][x] = (write_y - y) * TILE_SIZE;
+                    board.tiles[y][x] = ' ';
                 }
                 write_y--;
             }
@@ -142,8 +122,8 @@ void resolve_matches() {
 
         // fill empty spots with new random tiles
         while (write_y >= 0) {
-            board[write_y][x] = random_tile();
-            fall_offset[write_y][x] = (write_y + 1) * TILE_SIZE;
+            board.tiles[write_y][x] = random_tile();
+            board.fall_offset[write_y][x] = (write_y + 1) * TILE_SIZE;
             write_y--;
         }
     }
@@ -151,35 +131,20 @@ void resolve_matches() {
     tile_state = STATE_ANIMATING;
 }
 
-void init_board() {
-    for (int y = 0; y < BOARD_SIZE; y++) {
-        for (int x = 0; x < BOARD_SIZE; x++) {
-            board[y][x] = random_tile();
-        }
-    }
-
-	int grid_width = BOARD_SIZE * TILE_SIZE;
-	int grid_height = BOARD_SIZE * TILE_SIZE;
-
-	grid_origin = Vector2 {
-        (GetScreenWidth() - grid_width) / 2.0f,
-        (GetScreenHeight() - grid_height) / 2.0f
-    };
-
-	if (find_matches()) {
-        resolve_matches();
-    }
-    else {
-		tile_state = STATE_IDLE;
-    }
-}
-
 int main(void) {
     InitWindow(screenWidth, screenHeight, "Match 3 Game");
     SetTargetFPS(60);  
     srand(time(NULL));
 
-	init_board();
+    grid_origin = init_board(board);
+
+    if (find_matches()) {
+        resolve_matches();
+    }
+    else {
+        tile_state = STATE_IDLE;
+    }
+
     Vector2 mouse = { 0, 0 };
 
     while (!WindowShouldClose()) 
@@ -194,11 +159,11 @@ int main(void) {
                 if (selected_tile.x < 0) {
                     selected_tile = current_tile;
                 } else {
-                    if (are_tiles_adjacent(selected_tile, current_tile)) {
-                        swap_tiles((int)selected_tile.x, (int)selected_tile.y, current_tile.x, current_tile.y);
+                    if (are_tiles_adjacent(selected_tile.x, selected_tile.y, current_tile.x, current_tile.y)) {
+                        swap_tiles(board, (int)selected_tile.x, (int)selected_tile.y, current_tile.x, current_tile.y);
                         if (!find_matches()) {
                             // swap back if no match
-                            swap_tiles((int)selected_tile.x, (int)selected_tile.y, current_tile.x, current_tile.y);
+                            swap_tiles(board, (int)selected_tile.x, (int)selected_tile.y, current_tile.x, current_tile.y);
                         } else {
                             resolve_matches();
                         }
@@ -213,10 +178,10 @@ int main(void) {
 
             for (int y = 0; y < BOARD_SIZE; y++) {
                 for (int x = 0; x < BOARD_SIZE; x++) {
-                    if (fall_offset[y][x] > 0) {
-                        fall_offset[y][x] -= fall_speed;
-                        if (fall_offset[y][x] < 0) {
-                            fall_offset[y][x] = 0;
+                    if (board.fall_offset[y][x] > 0) {
+                        board.fall_offset[y][x] -= fall_speed;
+                        if (board.fall_offset[y][x] < 0) {
+                            board.fall_offset[y][x] = 0;
                         }
                         else {
                             still_animating = true;
@@ -287,14 +252,14 @@ int main(void) {
 
 				DrawRectangleLinesEx(rect, 1, DARKGRAY);
 
-                if (board[y][x] != ' ') {
-                    Vector2 position = { rect.x + 12, rect.y + 8 - fall_offset[y][x]};
+                if (board.tiles[y][x] != ' ') {
+                    Vector2 position = { rect.x + 12, rect.y + 8 - board.fall_offset[y][x]};
                     DrawTextEx(
                         GetFontDefault(),
-                        TextFormat("%c", board[y][x]),
+                        TextFormat("%c", board.tiles[y][x]),
                         position,
                         20, 1,
-                        matched[y][x] ? GREEN : YELLOW
+                        board.matched[y][x] ? GREEN : YELLOW
                     );
                 }
             }
