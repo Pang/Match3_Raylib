@@ -7,6 +7,10 @@
 #define BOARD_SIZE 8
 #define TILE_SIZE 40
 #define TILE_TYPES 5
+#define MAX_SCORE_POPUPS 32
+
+const int screenWidth = 800;
+const int screenHeight = 450;
 
 const char tile_chars[TILE_TYPES] = { '#', '@', '$', '%', '&' };    
 char board[BOARD_SIZE][BOARD_SIZE];
@@ -16,9 +20,14 @@ float fall_offset[BOARD_SIZE][BOARD_SIZE] = { 0 };
 int score = 0;
 Vector2 grid_origin;
 Vector2 selected_tile = { -1, -1};
+
 float fall_speed = 5.0f;
 float match_delay_timer = 0.0f;
-const float MATCH_DELAY_DURATION = 0.2f;
+const float MATCH_DELAY_DURATION = 0.5f;
+
+float score_scale = 1.0f;
+float score_scale_velocity = 0.0f;
+bool score_animating = false;
 
 typedef enum {
     STATE_IDLE,
@@ -27,6 +36,16 @@ typedef enum {
 } TileState;
 
 TileState tile_state = STATE_IDLE;
+
+typedef struct {
+    Vector2 position;
+    int amount;
+    float lifetime;
+    float alpha;
+    bool active;
+} ScorePopup;
+
+ScorePopup score_popups[MAX_SCORE_POPUPS] = { 0 };
 
 char random_tile() {
 	return tile_chars[rand() % TILE_TYPES];
@@ -40,6 +59,23 @@ void swap_tiles(int x1, int y1, int x2, int y2) {
 
 bool are_tiles_adjacent(Vector2 a, Vector2 b) {
     return (abs((int)a.x - (int)b.x) + abs((int)a.y - (int)b.y)) == 1;
+}
+
+void add_score_popup(int x, int y, int amount, Vector2 grid_origin) {
+    for (int i = 0; i < MAX_SCORE_POPUPS; i++) {
+        if (!score_popups[i].active) {
+            Vector2 popupPos = {
+                grid_origin.x + x * TILE_SIZE + TILE_SIZE / 2,
+                grid_origin.y + y * TILE_SIZE + TILE_SIZE / 2
+			};
+            score_popups[i].position = popupPos;
+            score_popups[i].amount = amount;
+            score_popups[i].lifetime = 1.0f;
+            score_popups[i].alpha = 1.0f;
+            score_popups[i].active = true;
+            break;
+        }
+    }
 }
 
 bool find_matches() {
@@ -59,6 +95,12 @@ bool find_matches() {
                 // update score
                 score += 10;
                 found = true;
+
+                score_animating = true;
+                score_scale = 2.0f;
+                score_scale_velocity = -2.5f;
+
+                add_score_popup(x, y, 10, grid_origin);
             }
         }
     }
@@ -71,6 +113,12 @@ bool find_matches() {
                 matched[y][x] = matched[y + 1][x] = matched[y + 2][x] = true;
                 score += 10;
                 found = true;
+
+                score_animating = true;
+                score_scale = 2.0f;
+                score_scale_velocity = -2.5f;
+
+                add_score_popup(x, y, 10, grid_origin);
             }
         }
     }
@@ -126,17 +174,12 @@ void init_board() {
     }
 }
 
-int main(void)
-{
-    const int screenWidth = 800;
-    const int screenHeight = 450;
-
+int main(void) {
     InitWindow(screenWidth, screenHeight, "Match 3 Game");
     SetTargetFPS(60);  
-
     srand(time(NULL));
-	init_board();
 
+	init_board();
     Vector2 mouse = { 0, 0 };
 
     while (!WindowShouldClose()) 
@@ -152,10 +195,10 @@ int main(void)
                     selected_tile = current_tile;
                 } else {
                     if (are_tiles_adjacent(selected_tile, current_tile)) {
-                        swap_tiles((int)selected_tile.x, (int)selected_tile.y, x, y);
+                        swap_tiles((int)selected_tile.x, (int)selected_tile.y, current_tile.x, current_tile.y);
                         if (!find_matches()) {
                             // swap back if no match
-                            swap_tiles((int)selected_tile.x, (int)selected_tile.y, x, y);
+                            swap_tiles((int)selected_tile.x, (int)selected_tile.y, current_tile.x, current_tile.y);
                         } else {
                             resolve_matches();
                         }
@@ -182,9 +225,9 @@ int main(void)
                 }
             }
 
-			if (!still_animating) {
+            if (!still_animating) {
                 tile_state = STATE_MATCH_DELAY;
-				match_delay_timer = MATCH_DELAY_DURATION;
+                match_delay_timer = MATCH_DELAY_DURATION;
             }
         }
 
@@ -200,8 +243,26 @@ int main(void)
             }
         }
 
-        if (find_matches()) {
-			resolve_matches();
+        // update our score popups array
+        for (int i = 0; i < MAX_SCORE_POPUPS; i++) {
+            if (score_popups[i].active) {
+                score_popups[i].lifetime -= GetFrameTime();
+                score_popups[i].position.y -= 30 * GetFrameTime();
+                score_popups[i].alpha = score_popups[i].lifetime;
+
+                if (score_popups[i].lifetime <= 0.0f) {
+                    score_popups[i].active = false;
+                }
+            }
+        }
+
+        // update the score animation
+        if (score_animating) {
+            score_scale += score_scale_velocity * GetFrameTime();
+            if (score_scale <= 1.0f) {
+                score_scale = 1.0f;
+                score_animating = false;
+            }
         }
 
         BeginDrawing();
@@ -214,6 +275,7 @@ int main(void)
             BOARD_SIZE * TILE_SIZE,
             Fade(DARKGRAY, 0.60f)
         );
+
         for (int y = 0; y < BOARD_SIZE; y++) {
             for (int x = 0; x < BOARD_SIZE; x++) {
 				Rectangle rect = { 
@@ -248,6 +310,19 @@ int main(void)
             DrawRectangleLinesEx(selectedRect, 2, YELLOW);
         }
         DrawText(TextFormat("Score: %d", score), 20, 20, 24, YELLOW);
+
+        // draw score popups
+        for (int i = 0; i < MAX_SCORE_POPUPS; i++) {
+            if (score_popups[i].active) {
+                Color c = Fade(YELLOW, score_popups[i].alpha);
+                DrawText(
+                    TextFormat("+%d", score_popups[i].amount),
+                    score_popups[i].position.x,
+                    score_popups[i].position.y,
+                    20, c);
+            }
+        }
+
         EndDrawing();
     }
 
