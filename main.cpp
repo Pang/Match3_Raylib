@@ -136,7 +136,8 @@ int main(void) {
     SetTargetFPS(60);  
     srand(time(NULL));
 
-    grid_origin = init_board(board);
+    std::vector<float> boardVector = init_board(board);
+	grid_origin = Vector2{ boardVector[0], boardVector[1] };
 
     if (find_matches()) {
         resolve_matches();

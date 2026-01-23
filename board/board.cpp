@@ -3,10 +3,11 @@
 #include "config.h"
 #include "raylib.h"
 #include <stdlib.h>
+#include <vector>
 
 const char tile_chars[TILE_TYPES] = { '#', '@', '$', '%', '&' };
 
-Vector2 init_board(Board& board) {
+std::vector<float> init_board(Board& board) {
     for (int y = 0; y < BOARD_SIZE; y++) {
         for (int x = 0; x < BOARD_SIZE; x++) {
             board.tiles[y][x] = random_tile();
@@ -16,11 +17,7 @@ Vector2 init_board(Board& board) {
     int grid_width = BOARD_SIZE * TILE_SIZE;
     int grid_height = BOARD_SIZE * TILE_SIZE;
 
-    Vector2 grid_origin = Vector2{
-        (GetScreenWidth() - grid_width) / 2.0f,
-        (GetScreenHeight() - grid_height) / 2.0f
-    };
-    return grid_origin;
+    return { (GetScreenWidth() - grid_width) / 2.0f, (GetScreenHeight() - grid_height) / 2.0f };
 }
 
 char random_tile() {
