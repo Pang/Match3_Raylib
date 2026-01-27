@@ -33,15 +33,17 @@ void add_score_popup(Animation& animation, int x, int y, int amount, Vec2Int gri
 }
 
 void animate_falling_blocks(Board& board, Animation& animation) {
-    if (board.tile_state == STATE_ANIMATING) {
+    if (board.getTileState() == STATE_ANIMATING) {
         bool still_animating = false;
 
         for (int y = 0; y < BOARD_SIZE; y++) {
             for (int x = 0; x < BOARD_SIZE; x++) {
-                if (board.fall_offset[y][x] > 0) {
-                    board.fall_offset[y][x] -= animation.fall_speed;
-                    if (board.fall_offset[y][x] < 0) {
-                        board.fall_offset[y][x] = 0;
+                if (board.getFallOffset(x, y) > 0) {
+                    float fallOffset = board.getFallOffset(x, y);
+					float newOffset = fallOffset - animation.fall_speed;
+					board.setFallOffset(x, y, newOffset);
+                    if (board.getFallOffset(x, y) < 0) {
+                        board.setFallOffset(x, y, 0);
                     }
                     else {
                         still_animating = true;
@@ -51,7 +53,7 @@ void animate_falling_blocks(Board& board, Animation& animation) {
         }
 
         if (!still_animating) {
-            board.tile_state = STATE_MATCH_DELAY;
+            board.setTileState(STATE_MATCH_DELAY);
             animation.match_delay_timer = animation.match_delay_duration;
         }
     }

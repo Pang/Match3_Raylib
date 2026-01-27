@@ -13,18 +13,17 @@
 #include "animation/animation.h"
 #include "render/render.h"
 
-Board board{};
 Animation animation{};
 
 FoundMatchesResponse found_matches_response = {};
 int score = 0;
 
-void match_found() {
+void matchFound(Board& board) {
     for (int i = 0; i < found_matches_response.matchPositions.size(); i++) {
         Vec2Int pos = found_matches_response.matchPositions[i];
-        add_score_popup(animation, pos.x, pos.y, 10, board.grid_origin);
+        add_score_popup(animation, pos.x, pos.y, 10, board.getGridOrigin());
     }
-    resolve_matches(board);
+    board.resolveMatches();
 }
 
 int main(void) {
@@ -32,17 +31,19 @@ int main(void) {
     SetTargetFPS(60);  
     srand(time(NULL));
 
-    init_board(board);
+    Board board;
+    board.init();
+
     init_animation(animation);
 
-	found_matches_response = find_matches(board, score);
+	found_matches_response = board.findMatches(score);
 	score = found_matches_response.updatedScore;
 
     if (found_matches_response.foundMatches) {
-        match_found();
+        matchFound(board);
     }
     else {
-        board.tile_state = STATE_IDLE;
+        board.setTileState(STATE_IDLE);
     }
 
     Vector2 mouse = { 0, 0 };
@@ -50,46 +51,46 @@ int main(void) {
     while (!WindowShouldClose()) 
     {
         mouse = GetMousePosition();
-        if (board.tile_state == STATE_IDLE && IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
-            int x = (mouse.x - board.grid_origin.x) / TILE_SIZE;
-            int y = (mouse.y - board.grid_origin.y) / TILE_SIZE;
+        if (board.getTileState() == STATE_IDLE && IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+            int x = (mouse.x - board.getGridOrigin().x) / TILE_SIZE;
+            int y = (mouse.y - board.getGridOrigin().y) / TILE_SIZE;
 
             if (x >= 0 && x < BOARD_SIZE && y >= 0 && y < BOARD_SIZE) {
-                if (board.selected_tile.x < 0) {
-                    board.selected_tile = { x, y };
+                if (board.getSelectedTile().x < 0) {
+                    board.setSelectedTile({ x, y });
                 }
                 else {
-                    if (are_tiles_adjacent(board.selected_tile.x, board.selected_tile.y, x, y)) {
-                        swap_tiles(board, board.selected_tile.x, board.selected_tile.y, x, y);
+                    if (board.areTilesAdjacent(board.getSelectedTile().x, board.getSelectedTile().y, x, y)) {
+                        board.swapTiles(board.getSelectedTile().x, board.getSelectedTile().y, x, y);
 
-                        found_matches_response = find_matches(board, score);
+                        found_matches_response = board.findMatches(score);
                         score = found_matches_response.updatedScore;
 
                         if (found_matches_response.foundMatches) {
-                            match_found();
+                            matchFound(board);
                         }
                         else {
-                            swap_tiles(board, board.selected_tile.x, board.selected_tile.y, x, y);
+                            board.swapTiles(board.getSelectedTile().x, board.getSelectedTile().y, x, y);
                         }
                     }
-                    board.selected_tile = { -1, -1 };
+                    board.setSelectedTile({ -1, -1 });
                 }
             }
         }
 
         animate_falling_blocks(board, animation);
 
-        if (board.tile_state == STATE_MATCH_DELAY) {
+        if (board.getTileState() == STATE_MATCH_DELAY) {
             animation.match_delay_timer -= GetFrameTime();
             if (animation.match_delay_timer <= 0.0f) {
-                found_matches_response = find_matches(board, score);
+                found_matches_response = board.findMatches(score);
                 score = found_matches_response.updatedScore;
 
                 if (found_matches_response.foundMatches) {
-                    match_found();
+                    matchFound(board);
                 }
                 else {
-                    board.tile_state = STATE_IDLE;
+                    board.setTileState(STATE_IDLE);
                 }
             }
         }

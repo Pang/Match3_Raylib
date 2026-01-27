@@ -3,7 +3,7 @@
 #include "raylib.h"
 
 void draw_entire_board(Board& board, Animation& animation, int score) {
-    draw_board(board.grid_origin.x, board.grid_origin.y);
+    draw_board(board.getGridOrigin().x, board.getGridOrigin().y);
     draw_tiles(board);
     draw_selected(board);
     DrawText(TextFormat("Score: %d", score), 20, 20, 24, YELLOW);
@@ -24,22 +24,22 @@ void draw_tiles(Board& board) {
     for (int y = 0; y < BOARD_SIZE; y++) {
         for (int x = 0; x < BOARD_SIZE; x++) {
             Rectangle rect = {
-                board.grid_origin.x + (x * TILE_SIZE),
-                board.grid_origin.y + (y * TILE_SIZE),
+                board.getGridOrigin().x + (x * TILE_SIZE),
+                board.getGridOrigin().y + (y * TILE_SIZE),
                 TILE_SIZE,
                 TILE_SIZE
             };
 
             DrawRectangleLinesEx(rect, 1, DARKGRAY);
 
-            if (board.tiles[y][x] != ' ') {
-                Vector2 position = { rect.x + 12, rect.y + 8 - board.fall_offset[y][x] };
+            if (board.getTile(x, y) != ' ') {
+                Vector2 position = { rect.x + 12, rect.y + 8 - board.getFallOffset(x, y) };
                 DrawTextEx(
                     GetFontDefault(),
-                    TextFormat("%c", board.tiles[y][x]),
+                    TextFormat("%c", board.getTile(x, y)),
                     position,
                     20, 1,
-                    board.matched[y][x] ? GREEN : YELLOW
+                    board.isMatched(x, y) ? GREEN : YELLOW
                 );
             }
         }
@@ -47,10 +47,10 @@ void draw_tiles(Board& board) {
 }
 
 void draw_selected(Board& board) {
-    if (board.selected_tile.x >= 0) {
+    if (board.getSelectedTile().x >= 0) {
         Rectangle selectedRect = {
-            board.grid_origin.x + (board.selected_tile.x * TILE_SIZE),
-            board.grid_origin.y + (board.selected_tile.y * TILE_SIZE),
+            board.getGridOrigin().x + (board.getSelectedTile().x * TILE_SIZE),
+            board.getGridOrigin().y + (board.getSelectedTile().y * TILE_SIZE),
             TILE_SIZE,
             TILE_SIZE
         };
