@@ -65,7 +65,6 @@ void Board::init() {
 
 char Board::randomTile() {
     return static_cast<TileType>(rand() % TILE_COUNT);
-    //return tile_chars[rand() % TILE_TYPES];
 }
 
 void Board::swapTiles(int x1, int y1, int x2, int y2) {
@@ -143,9 +142,9 @@ bool Board::areTilesAdjacent(int x1, int y1, int x2, int y2) const {
 }
 
 void Board::loadTextures() {
-    tileTextures[TILE_RED] = LoadTexture("assets/red.jpg");
-    tileTextures[TILE_BLUE] = LoadTexture("assets/blue.jpg");
-    tileTextures[TILE_GREEN] = LoadTexture("assets/green.jpg");
-    tileTextures[TILE_YELLOW] = LoadTexture("assets/yellow.jpg");
-    tileTextures[TILE_PURPLE] = LoadTexture("assets/purple.jpg");
+    tileTextures[TILE_RED] = LoadTexture("assets/heart.png");
+    tileTextures[TILE_BLUE] = LoadTexture("assets/ghost.png");
+    tileTextures[TILE_GREEN] = LoadTexture("assets/invader.png");
+    tileTextures[TILE_YELLOW] = LoadTexture("assets/star.png");
+    tileTextures[TILE_PURPLE] = LoadTexture("assets/gamepad.png");
 }

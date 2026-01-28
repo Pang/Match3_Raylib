@@ -2,11 +2,13 @@
 #include "render.h"
 #include "raylib.h"
 
-void Render::drawEntireBoard(Board& board, Animation& animation, int score) {
+void Render::drawEntireBoard(Board& board, Animation& animation, int score, Rectangle resetButton) {
     drawBoard(board.getGridOrigin().x, board.getGridOrigin().y);
     drawTiles(board);
     drawSelected(board);
+
     DrawText(TextFormat("Score: %d", score), 20, 20, 24, YELLOW);
+	drawResetButton(resetButton);
     drawScorePopups(animation);
 }
 
@@ -34,8 +36,9 @@ void Render::drawTiles(Board& board) {
 
             int tile = board.getTile(x, y);
             if (static_cast<TileType>(tile) != TILE_NONE) {
-                Vector2 position = { rect.x + 3, rect.y + 3 - board.getFallOffset(x, y) };
-                DrawTexture(board.tileTextures[tile], position.x, position.y, WHITE);
+                Rectangle src = { 0, 0, (float)board.tileTextures[tile].width, (float)board.tileTextures[tile].height };
+                Rectangle dst = { rect.x + 2, rect.y + 2 - board.getFallOffset(x, y), TILE_SIZE - 4, TILE_SIZE - 4 };
+                DrawTexturePro(board.tileTextures[tile], src, dst, { 0, 0 }, 0.0f, WHITE);
             }
         }
     }
@@ -56,7 +59,7 @@ void Render::drawSelected(Board& board) {
 void Render::drawScorePopups(Animation& animation) {
     for (int i = 0; i < MAX_SCORE_POPUPS; i++) {
         if (animation.score_popups[i].active) {
-            Color c = Fade(YELLOW, animation.score_popups[i].alpha);
+            Color c = Fade(WHITE, animation.score_popups[i].alpha);
             DrawText(
                 TextFormat("+%d", animation.score_popups[i].amount),
                 animation.score_popups[i].position.x,
@@ -64,4 +67,15 @@ void Render::drawScorePopups(Animation& animation) {
                 20, c);
         }
     }
+}
+
+void Render::drawResetButton(Rectangle button)
+{
+    DrawRectangleRec(button, LIGHTGRAY);
+    DrawRectangleLinesEx(button, 2, DARKGRAY);
+    DrawText("RESET",
+        button.x + 30,
+        button.y + 10,
+        20,
+        BLACK);
 }

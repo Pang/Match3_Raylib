@@ -10,6 +10,7 @@
 #include "animation/animation.h"
 #include "render/render.h"
 
+Rectangle resetButton = { screenWidth - 140, screenHeight - 60, 120, 40 };
 FoundMatchesResponse found_matches_response = {};
 int score = 0;
 
@@ -19,6 +20,22 @@ void matchFound(Board& board, Animation& animation) {
         animation.addScorePopup(pos.x, pos.y, 10, board.getGridOrigin());
     }
     board.resolveMatches();
+}
+
+bool isResetClicked(Rectangle button, Vector2 mouse) {
+    return CheckCollisionPointRec(mouse, button) && IsMouseButtonPressed(MOUSE_LEFT_BUTTON);
+}
+
+void findInitialMatches(Board& board, Animation& animation) {
+    found_matches_response = board.findMatches(score);
+    score = found_matches_response.updatedScore;
+
+    if (found_matches_response.foundMatches) {
+        matchFound(board, animation);
+    }
+    else {
+        board.setTileState(STATE_IDLE);
+    }
 }
 
 int main(void) {
@@ -32,21 +49,19 @@ int main(void) {
     Animation animation;
     Render render;
 
-	found_matches_response = board.findMatches(score);
-	score = found_matches_response.updatedScore;
-
-    if (found_matches_response.foundMatches) {
-        matchFound(board, animation);
-    }
-    else {
-        board.setTileState(STATE_IDLE);
-    }
-
+    findInitialMatches(board, animation);
     Vector2 mouse = { 0, 0 };
 
     while (!WindowShouldClose()) 
     {
         mouse = GetMousePosition();
+
+        if (isResetClicked(resetButton, mouse)) {
+            board.init();
+            score = 0;
+			findInitialMatches(board, animation);
+        }
+
         if (board.getTileState() == STATE_IDLE && IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
             int x = (mouse.x - board.getGridOrigin().x) / TILE_SIZE;
             int y = (mouse.y - board.getGridOrigin().y) / TILE_SIZE;
@@ -95,8 +110,9 @@ int main(void) {
 
         BeginDrawing();
         ClearBackground(BLACK);
-        render.drawEntireBoard(board, animation, score);
+        render.drawEntireBoard(board, animation, score, resetButton);
         EndDrawing();
+
     }
 
     CloseWindow(); 
