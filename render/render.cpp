@@ -32,15 +32,10 @@ void Render::drawTiles(Board& board) {
 
             DrawRectangleLinesEx(rect, 1, DARKGRAY);
 
-            if (board.getTile(x, y) != ' ') {
-                Vector2 position = { rect.x + 12, rect.y + 8 - board.getFallOffset(x, y) };
-                DrawTextEx(
-                    GetFontDefault(),
-                    TextFormat("%c", board.getTile(x, y)),
-                    position,
-                    20, 1,
-                    board.isMatched(x, y) ? GREEN : YELLOW
-                );
+            int tile = board.getTile(x, y);
+            if (static_cast<TileType>(tile) != TILE_NONE) {
+                Vector2 position = { rect.x + 3, rect.y + 3 - board.getFallOffset(x, y) };
+                DrawTexture(board.tileTextures[tile], position.x, position.y, WHITE);
             }
         }
     }

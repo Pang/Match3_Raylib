@@ -2,14 +2,7 @@
 
 #include "config.h"
 #include "../types/types.h"
-#include <vector>
-
-struct FoundMatchesResponse
-{
-    bool foundMatches = false;
-    int updatedScore = 0;
-    std::vector<Vec2Int> matchPositions;
-};
+#include <raylib.h>
 
 class Board
 {
@@ -36,19 +29,22 @@ class Board
         void setFallOffset(int x, int y, float newValue);
 
 
-        char getTile(int x, int y) const;
+        int getTile(int x, int y) const;
         bool isMatched(int x, int y) const;
-
 
     private:
         char randomTile();
+        void loadTextures();
+
+    public:
+        Texture2D tileTextures[TILE_COUNT];
 
     private:
         TileState tile_state;
         Vec2Int grid_origin;
         Vec2Int selected_tile;
 
-        char tiles[BOARD_SIZE][BOARD_SIZE];
+        int tiles[BOARD_SIZE][BOARD_SIZE];
         bool matched[BOARD_SIZE][BOARD_SIZE];
         float fall_offset[BOARD_SIZE][BOARD_SIZE];
 };
