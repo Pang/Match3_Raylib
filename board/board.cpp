@@ -9,10 +9,6 @@
 const char tile_chars[TILE_TYPES] = { '#', '@', '$', '%', '&' };
 const float MATCH_DELAY_DURATION = 0.5f;
 
-bool Board::areTilesAdjacent(int x1, int y1, int x2, int y2) const {
-    return (abs((int)x1 - (int)x2) + abs((int)y1 - (int)y2)) == 1;
-}
-
 TileState Board::getTileState() const {
     return tile_state;
 }
@@ -137,4 +133,8 @@ void Board::resolveMatches() {
     }
 
 	setTileState(STATE_ANIMATING);
+}
+
+bool Board::areTilesAdjacent(int x1, int y1, int x2, int y2) const {
+    return (abs((int)x1 - (int)x2) + abs((int)y1 - (int)y2)) == 1;
 }

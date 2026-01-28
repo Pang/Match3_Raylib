@@ -2,26 +2,21 @@
 
 #include "raylib.h"
 #include <stdlib.h>
-#include <stdbool.h>
 #include <time.h>
-#include <math.h>
 
 #include "types/types.h"
 #include "board/config.h"
-#include "game/game.h"
 #include "board/board.h"
 #include "animation/animation.h"
 #include "render/render.h"
 
-Animation animation{};
-
 FoundMatchesResponse found_matches_response = {};
 int score = 0;
 
-void matchFound(Board& board) {
+void matchFound(Board& board, Animation& animation) {
     for (int i = 0; i < found_matches_response.matchPositions.size(); i++) {
         Vec2Int pos = found_matches_response.matchPositions[i];
-        add_score_popup(animation, pos.x, pos.y, 10, board.getGridOrigin());
+        animation.addScorePopup(pos.x, pos.y, 10, board.getGridOrigin());
     }
     board.resolveMatches();
 }
@@ -34,13 +29,13 @@ int main(void) {
     Board board;
     board.init();
 
-    init_animation(animation);
+    Animation animation;
 
 	found_matches_response = board.findMatches(score);
 	score = found_matches_response.updatedScore;
 
     if (found_matches_response.foundMatches) {
-        matchFound(board);
+        matchFound(board, animation);
     }
     else {
         board.setTileState(STATE_IDLE);
@@ -67,7 +62,7 @@ int main(void) {
                         score = found_matches_response.updatedScore;
 
                         if (found_matches_response.foundMatches) {
-                            matchFound(board);
+                            matchFound(board, animation);
                         }
                         else {
                             board.swapTiles(board.getSelectedTile().x, board.getSelectedTile().y, x, y);
@@ -78,7 +73,7 @@ int main(void) {
             }
         }
 
-        animate_falling_blocks(board, animation);
+        animation.animateFallingBlocks(board);
 
         if (board.getTileState() == STATE_MATCH_DELAY) {
             animation.match_delay_timer -= GetFrameTime();
@@ -87,7 +82,7 @@ int main(void) {
                 score = found_matches_response.updatedScore;
 
                 if (found_matches_response.foundMatches) {
-                    matchFound(board);
+                    matchFound(board, animation);
                 }
                 else {
                     board.setTileState(STATE_IDLE);
@@ -95,7 +90,7 @@ int main(void) {
             }
         }
 
-        update_scores(animation, GetFrameTime());
+        animation.updateScorePopups(GetFrameTime());
 
         BeginDrawing();
         ClearBackground(BLACK);
