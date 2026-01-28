@@ -2,15 +2,15 @@
 #include "render.h"
 #include "raylib.h"
 
-void draw_entire_board(Board& board, Animation& animation, int score) {
-    draw_board(board.getGridOrigin().x, board.getGridOrigin().y);
-    draw_tiles(board);
-    draw_selected(board);
+void Render::drawEntireBoard(Board& board, Animation& animation, int score) {
+    drawBoard(board.getGridOrigin().x, board.getGridOrigin().y);
+    drawTiles(board);
+    drawSelected(board);
     DrawText(TextFormat("Score: %d", score), 20, 20, 24, YELLOW);
-    draw_score_popups(animation);
+    drawScorePopups(animation);
 }
 
-void draw_board(int x1, int y1) {
+void Render::drawBoard(int x1, int y1) {
     DrawRectangle(
         x1,
         y1,
@@ -20,7 +20,7 @@ void draw_board(int x1, int y1) {
     );
 }
 
-void draw_tiles(Board& board) {
+void Render::drawTiles(Board& board) {
     for (int y = 0; y < BOARD_SIZE; y++) {
         for (int x = 0; x < BOARD_SIZE; x++) {
             Rectangle rect = {
@@ -46,7 +46,7 @@ void draw_tiles(Board& board) {
     }
 }
 
-void draw_selected(Board& board) {
+void Render::drawSelected(Board& board) {
     if (board.getSelectedTile().x >= 0) {
         Rectangle selectedRect = {
             board.getGridOrigin().x + (board.getSelectedTile().x * TILE_SIZE),
@@ -58,7 +58,7 @@ void draw_selected(Board& board) {
     }
 }
 
-void draw_score_popups(Animation& animation) {
+void Render::drawScorePopups(Animation& animation) {
     for (int i = 0; i < MAX_SCORE_POPUPS; i++) {
         if (animation.score_popups[i].active) {
             Color c = Fade(YELLOW, animation.score_popups[i].alpha);

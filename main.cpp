@@ -30,6 +30,7 @@ int main(void) {
     board.init();
 
     Animation animation;
+    Render render;
 
 	found_matches_response = board.findMatches(score);
 	score = found_matches_response.updatedScore;
@@ -94,7 +95,7 @@ int main(void) {
 
         BeginDrawing();
         ClearBackground(BLACK);
-        draw_entire_board(board, animation, score);
+        render.drawEntireBoard(board, animation, score);
         EndDrawing();
     }
 
